@@ -1,6 +1,19 @@
+
 #include "WsClient.h"
 #include <Arduino.h>
 #include <WiFiClientSecure.h>
+
+#if USE_TLS
+bool WsClient::connected()
+{
+  return _clientSecure.connected();
+}
+#else
+bool WsClient::connected()
+{
+  return _clientPlain.connected();
+}
+#endif
 
 static String _base64Encode(const uint8_t *data, size_t len)
 {
@@ -49,9 +62,14 @@ bool WsClient::connect(const char *host, uint16_t port, const char *path)
   _host = host;
   _port = port;
   _path = path;
-  _client.setInsecure(); // For testing only; remove for production and use CA cert
-  if (!_client.connect(host, port))
+#if USE_TLS
+  _clientSecure.setInsecure(); // For testing only; remove for production and use CA cert
+  if (!_clientSecure.connect(host, port))
     return false;
+#else
+  if (!_clientPlain.connect(host, port))
+    return false;
+#endif
   String key = _genKey();
   String req;
   req += "GET ";
@@ -77,7 +95,11 @@ bool WsClient::connect(const char *host, uint16_t port, const char *path)
   // Serial.println("[WsClient] --- END HTTP handshake request ---");
   for (size_t i = 0; i < req.length(); ++i)
   {
-    _client.write(req[i]);
+#if USE_TLS
+    _clientSecure.write(req[i]);
+#else
+    _clientPlain.write(req[i]);
+#endif
   }
   // Serial.println("[WsClient] Sent handshake request, waiting for response...");
   return _readHttpResponse();
@@ -90,29 +112,29 @@ bool WsClient::_readHttpResponse()
   // Serial.println("[WsClient] Waiting for HTTP handshake response...");
   while (millis() - start < 5000)
   {
-    while (_client.available())
+#if USE_TLS
+    while (_clientSecure.available())
     {
-      char c = _client.read();
+      char c = _clientSecure.read();
       statusLine += c;
       if (statusLine.endsWith("\r\n\r\n"))
       {
-        // Serial.println("[WsClient] --- HTTP handshake response ---");
-        // Serial.print(statusLine);
-        // Serial.println("[WsClient] --- END HTTP handshake response ---");
         _handshook = statusLine.startsWith("HTTP/1.1 101");
-        if (!_handshook)
-        {
-          // Serial.println("WebSocket handshake failed:");
-          // Serial.println(statusLine);
-        }
-        else
-        {
-          // Serial.println("WebSocket handshake OK");
-          // Serial.println("[WsClient] WebSocket connection established, starting frame reader");
-        }
         return _handshook;
       }
     }
+#else
+    while (_clientPlain.available())
+    {
+      char c = _clientPlain.read();
+      statusLine += c;
+      if (statusLine.endsWith("\r\n\r\n"))
+      {
+        _handshook = statusLine.startsWith("HTTP/1.1 101");
+        return _handshook;
+      }
+    }
+#endif
     delay(10);
   }
   // Serial.println("WebSocket handshake timeout");
@@ -122,86 +144,112 @@ bool WsClient::_readHttpResponse()
 // Minimal frame reader: text frames only, unmasked (server->client)
 bool WsClient::_readFrame(String &out)
 {
-  if (!_client.connected())
-  {
+#if USE_TLS
+  if (!_clientSecure.connected())
     return false;
-  }
-  if (!_client.available())
-  {
+  if (!_clientSecure.available())
     return false;
-  }
-  uint8_t hdr1 = _client.read();
+  uint8_t hdr1 = _clientSecure.read();
+#else
+  if (!_clientPlain.connected())
+    return false;
+  if (!_clientPlain.available())
+    return false;
+  uint8_t hdr1 = _clientPlain.read();
+#endif
   // Serial.print("[WsClient] Incoming frame: hdr1=0x");
   // Serial.println(hdr1, HEX);
   if ((hdr1 & 0x0F) == 0x9)
   {
-    // Serial.println("[WsClient] Received PING frame (opcode 0x9)");
-    uint8_t hdr2 = _client.read();
+#if USE_TLS
+    uint8_t hdr2 = _clientSecure.read();
     size_t len = hdr2 & 0x7F;
-    // Serial.print("[WsClient] Ping payload length: ");
-    // Serial.println(len);
     for (size_t i = 0; i < len; i++)
-    {
-      uint8_t b = _client.read();
-      // Serial.print("[WsClient] Ping payload byte: ");
-      // Serial.println(b, HEX);
-    }
-    // Send pong
+      _clientSecure.read();
     uint8_t pong[2] = {0x8A, 0x00};
-    _client.write(pong, 2);
-    // Serial.println("[WsClient] Sent PONG frame (opcode 0xA)");
+    _clientSecure.write(pong, 2);
+#else
+    uint8_t hdr2 = _clientPlain.read();
+    size_t len = hdr2 & 0x7F;
+    for (size_t i = 0; i < len; i++)
+      _clientPlain.read();
+    uint8_t pong[2] = {0x8A, 0x00};
+    _clientPlain.write(pong, 2);
+#endif
     return false;
   }
   if ((hdr1 & 0x0F) != 0x1)
   {
-    // Serial.print("[WsClient] Non-text frame received, opcode: 0x");
-    // Serial.println(hdr1 & 0x0F, HEX);
-    uint8_t hdr2 = _client.read();
+#if USE_TLS
+    uint8_t hdr2 = _clientSecure.read();
     size_t len = hdr2 & 0x7F;
-    // Serial.print("[WsClient] Skipping payload length: ");
-    // Serial.println(len);
     for (size_t i = 0; i < len; i++)
-    {
-      uint8_t b = _client.read();
-      // Serial.print("[WsClient] Skipped byte: ");
-      // Serial.println(b, HEX);
-    }
+      _clientSecure.read();
+#else
+    uint8_t hdr2 = _clientPlain.read();
+    size_t len = hdr2 & 0x7F;
+    for (size_t i = 0; i < len; i++)
+      _clientPlain.read();
+#endif
     return false;
   }
-  uint8_t hdr2 = _client.read();
+#if USE_TLS
+  uint8_t hdr2 = _clientSecure.read();
   bool masked = hdr2 & 0x80;
   size_t len = hdr2 & 0x7F;
   if (len == 126)
   {
-    uint8_t b1 = _client.read();
-    uint8_t b2 = _client.read();
+    uint8_t b1 = _clientSecure.read();
+    uint8_t b2 = _clientSecure.read();
     len = ((size_t)b1 << 8) | b2;
   }
   else if (len == 127)
   {
-    // Serial.println("[WsClient] Frame too long, aborting");
     return false;
   }
   uint8_t mask[4] = {0, 0, 0, 0};
   if (masked)
   {
     for (int i = 0; i < 4; i++)
-      mask[i] = _client.read();
+      mask[i] = _clientSecure.read();
   }
   out.reserve(len);
-  // Serial.print("[WsClient] Text frame payload length: ");
-  // Serial.println(len);
-  // Serial.print("[WsClient] Masked: ");
-  // Serial.println(masked);
   for (size_t i = 0; i < len; i++)
   {
-    uint8_t b = _client.read();
+    uint8_t b = _clientSecure.read();
     if (masked)
       b ^= mask[i % 4];
     out += (char)b;
   }
-  // Serial.print("[WsClient] Text frame payload: ");
-  // Serial.println(out);
+#else
+  uint8_t hdr2 = _clientPlain.read();
+  bool masked = hdr2 & 0x80;
+  size_t len = hdr2 & 0x7F;
+  if (len == 126)
+  {
+    uint8_t b1 = _clientPlain.read();
+    uint8_t b2 = _clientPlain.read();
+    len = ((size_t)b1 << 8) | b2;
+  }
+  else if (len == 127)
+  {
+    return false;
+  }
+  uint8_t mask[4] = {0, 0, 0, 0};
+  if (masked)
+  {
+    for (int i = 0; i < 4; i++)
+      mask[i] = _clientPlain.read();
+  }
+  out.reserve(len);
+  for (size_t i = 0; i < len; i++)
+  {
+    uint8_t b = _clientPlain.read();
+    if (masked)
+      b ^= mask[i % 4];
+    out += (char)b;
+  }
+#endif
   return true;
 }
 
@@ -216,35 +264,67 @@ void WsClient::poll(MessageHandler onMessage)
 
 bool WsClient::sendText(const char *data, size_t len)
 {
-  if (!_client.connected())
+#if USE_TLS
+  if (!_clientSecure.connected())
     return false;
-  // Client frames must be masked
   uint8_t hdr1 = 0x81; // FIN + text
-  _client.write(&hdr1, 1);
+  _clientSecure.write(&hdr1, 1);
   uint8_t mask[4];
   for (int i = 0; i < 4; i++)
     mask[i] = (uint8_t)random(0, 256);
   if (len < 126)
   {
     uint8_t hdr2 = 0x80 | (uint8_t)len;
-    _client.write(&hdr2, 1);
+    _clientSecure.write(&hdr2, 1);
   }
   else if (len < 65536)
   {
-    uint8_t hdr2 = 0xFE; // 126 + mask bit
-    _client.write(&hdr2, 1);
+    uint8_t hdr2 = 0xFE;
+    _clientSecure.write(&hdr2, 1);
     uint8_t ext[2] = {(uint8_t)(len >> 8), (uint8_t)(len & 0xFF)};
-    _client.write(ext, 2);
+    _clientSecure.write(ext, 2);
   }
   else
   {
-    return false; // too large
+    return false;
   }
-  _client.write(mask, 4);
+  _clientSecure.write(mask, 4);
   for (size_t i = 0; i < len; i++)
   {
     uint8_t b = data[i] ^ mask[i % 4];
-    _client.write(&b, 1);
+    _clientSecure.write(&b, 1);
   }
   return true;
+#else
+  if (!_clientPlain.connected())
+    return false;
+  uint8_t hdr1 = 0x81; // FIN + text
+  _clientPlain.write(&hdr1, 1);
+  uint8_t mask[4];
+  for (int i = 0; i < 4; i++)
+    mask[i] = (uint8_t)random(0, 256);
+  if (len < 126)
+  {
+    uint8_t hdr2 = 0x80 | (uint8_t)len;
+    _clientPlain.write(&hdr2, 1);
+  }
+  else if (len < 65536)
+  {
+    uint8_t hdr2 = 0xFE;
+    _clientPlain.write(&hdr2, 1);
+    uint8_t ext[2] = {(uint8_t)(len >> 8), (uint8_t)(len & 0xFF)};
+    _clientPlain.write(ext, 2);
+  }
+  else
+  {
+    return false;
+  }
+  _clientPlain.write(mask, 4);
+  for (size_t i = 0; i < len; i++)
+  {
+    uint8_t b = data[i] ^ mask[i % 4];
+    _clientPlain.write(&b, 1);
+  }
+  return true;
+#endif
 }

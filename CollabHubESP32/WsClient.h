@@ -1,6 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include <WiFiClientSecure.h>
+#include <WiFiClient.h>
+#include "config.h"
 #include <functional>
 
 class WsClient
@@ -12,10 +14,14 @@ public:
   bool connect(const char *host, uint16_t port, const char *path);
   void poll(MessageHandler onMessage);
   bool sendText(const char *data, size_t len);
-  bool connected() { return _client.connected(); }
+  bool connected();
 
 private:
-  WiFiClientSecure _client;
+#if USE_TLS
+  WiFiClientSecure _clientSecure;
+#else
+  WiFiClient _clientPlain;
+#endif
   bool _handshook = false;
   String _host;
   uint16_t _port = 0;
