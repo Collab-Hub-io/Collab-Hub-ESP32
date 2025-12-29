@@ -88,6 +88,7 @@ To change the event trigger pin, edit `EVENT_PIN` in `CollabHubESP32.ino`:
 ```
 
 **Wiring:**
+
 - Connect one side of a pushbutton to the selected GPIO pin (e.g., GPIO 0).
 - Connect the other side of the button to GND.
 - The pin is set as INPUT_PULLUP, so pressing the button pulls it LOW and triggers the event.
