@@ -78,7 +78,7 @@ There are two methods to get started: PlatformIO or the ArduinoIDE.
 
 # Arduino or PlatformIO unable to connect to your ESP32 Board?
 
-Your computer might be able to recognize your board. Double check the following:
+Your computer might have trouble recognizing your board. Double check the following:
 
 1. _Not all cables are created equal_. Make sure the ESP32 board is connected to your computer through a data cable, as some cables are just charging cables and may not have their data nodes connected.
 2. If you're on a Mac, you might need to install drivers:
