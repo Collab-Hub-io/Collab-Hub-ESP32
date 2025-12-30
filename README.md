@@ -1,6 +1,6 @@
 # Collab-Hub ESP32 Client - 0.1.1 (Beta)
 
-This sketch allows ESP32 devices to the Collab-Hub.io ecosystem. Devices connect to a `Collab-Hub` server over WebSockets (Socket.IO framing), generate a username `ESP-XYZ`, join the `iot` room, and are able to send and receive Collab-Hub `Control`, `Event`, and `Chat` messages.
+This sketch allows ESP32 devices connect to the Collab-Hub.io ecosystem. Devices connect to a `Collab-Hub` server over WebSockets (Socket.IO framing), generate a username `ESP-XYZ`, join the `iot` room, and are able to send and receive Collab-Hub `Control`, `Event`, and `Chat` messages.
 
 Contact Nick Hwang (nickthwang at gmail) with any questions.
 
@@ -19,6 +19,8 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 - `CollabHubESP32/SioClient.*`, `WsClient.*`: Protocol internals (do not edit)
 - `platformio.ini`: PlatformIO build config (Optional)
 
+---
+
 # Table of Contents:
 
 - [Get Started](#get-started)
@@ -31,6 +33,8 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 - [Troubleshooting](#troubleshooting)
 - [File Structure & Customization](#file-structure--customization)
 
+---
+
 # Get Started
 
 ## Arduino IDE
@@ -38,7 +42,8 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 0. Download this repo to your computer and unzip.
 1. Download and install [Arduino IDE](https://www.arduino.cc/en/software/)
 1. Install ESP32 core: Tools → Board → Boards Manager (Shift+Command+B) → search "esp32" by Espressif Systems → Install
-   <img src="img/Tools-Board-BoardManager.png" width="600">s
+
+   <img src="img/Tools-Board-BoardManager.png" width="600">
 
    <img src="img/Search-ESP32.png" width="300">
 
@@ -81,8 +86,6 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 6. Select `OK`.
 7. You should be able to upload your sketch (the triagular play button) and open Serial Monitor at 115200 baud.
 
----
-
 ## Configuring the WIFI and Server Location (Hub_Host)
 
 Edit `CollabHubESP32/config.h`:
@@ -94,6 +97,8 @@ Edit `CollabHubESP32/config.h`:
 
 The values you want to change are the `WIFI_SSID` and `WIFI_PASS` in `config.h`.
 The other values do not need to change. Namespaces are an area development in the iteration of Collab-Hub.
+
+---
 
 # Connect
 
