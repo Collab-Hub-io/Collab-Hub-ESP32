@@ -4,6 +4,12 @@
 #include <WiFiClientSecure.h>
 
 #if USE_TLS
+#define WS_CLIENT _clientSecure
+#else
+#define WS_CLIENT _clientPlain
+#endif
+
+#if USE_TLS
 bool WsClient::connected()
 {
   return _clientSecure.connected();
@@ -141,116 +147,146 @@ bool WsClient::_readHttpResponse()
   return false;
 }
 
-// Minimal frame reader: text frames only, unmasked (server->client)
+void WsClient::_resetFrameState()
+{
+  _stage = StageHeader;
+  _hdr1 = 0;
+  _hdr2 = 0;
+  _opcode = 0;
+  _masked = false;
+  _maskIndex = 0;
+  _extLenNeeded = 0;
+  _extLenRead = 0;
+  _payloadLen = 0;
+  _payloadRead = 0;
+  _dropFrame = false;
+  _shouldClose = false;
+  _frameBuffer = "";
+}
+
+// Minimal frame reader: text frames only, tolerant of partial availability.
 bool WsClient::_readFrame(String &out)
 {
-#if USE_TLS
-  if (!_clientSecure.connected())
+  if (!WS_CLIENT.connected())
     return false;
-  if (!_clientSecure.available())
-    return false;
-  uint8_t hdr1 = _clientSecure.read();
-#else
-  if (!_clientPlain.connected())
-    return false;
-  if (!_clientPlain.available())
-    return false;
-  uint8_t hdr1 = _clientPlain.read();
-#endif
-  // Serial.print("[WsClient] Incoming frame: hdr1=0x");
-  // Serial.println(hdr1, HEX);
-  if ((hdr1 & 0x0F) == 0x9)
+
+  while (true)
   {
-#if USE_TLS
-    uint8_t hdr2 = _clientSecure.read();
-    size_t len = hdr2 & 0x7F;
-    for (size_t i = 0; i < len; i++)
-      _clientSecure.read();
-    uint8_t pong[2] = {0x8A, 0x00};
-    _clientSecure.write(pong, 2);
-#else
-    uint8_t hdr2 = _clientPlain.read();
-    size_t len = hdr2 & 0x7F;
-    for (size_t i = 0; i < len; i++)
-      _clientPlain.read();
-    uint8_t pong[2] = {0x8A, 0x00};
-    _clientPlain.write(pong, 2);
-#endif
-    return false;
+    switch (_stage)
+    {
+    case StageHeader:
+    {
+      if (WS_CLIENT.available() < 2)
+        return false;
+      _hdr1 = WS_CLIENT.read();
+      _hdr2 = WS_CLIENT.read();
+      _frameBuffer = "";
+      _opcode = _hdr1 & 0x0F;
+      _masked = (_hdr2 & 0x80) != 0;
+      _dropFrame = false;
+      _shouldClose = false;
+      if ((_hdr1 & 0x80) == 0)
+      {
+        _dropFrame = true;
+      }
+      if (_opcode == 0x8)
+      {
+        _dropFrame = true;
+        _shouldClose = true;
+      }
+      uint8_t len7 = _hdr2 & 0x7F;
+      _payloadLen = 0;
+      _payloadRead = 0;
+      if (len7 < 126)
+      {
+        _payloadLen = len7;
+        _stage = _masked ? StageMask : StagePayload;
+      }
+      else
+      {
+        _extLenNeeded = (len7 == 126) ? 2 : 8;
+        _extLenRead = 0;
+        _stage = StageExtLen;
+      }
+      break;
+    }
+    case StageExtLen:
+      while (_extLenRead < _extLenNeeded)
+      {
+        if (WS_CLIENT.available() == 0)
+          return false;
+        _extLen[_extLenRead++] = WS_CLIENT.read();
+      }
+      if (_extLenNeeded == 2)
+      {
+        _payloadLen = ((size_t)_extLen[0] << 8) | _extLen[1];
+      }
+      else
+      {
+        uint64_t len64 = 0;
+        for (size_t i = 0; i < 8; ++i)
+          len64 = (len64 << 8) | _extLen[i];
+        if (len64 > 0xFFFFFFFFULL)
+          len64 = 0xFFFFFFFFULL;
+        _payloadLen = (size_t)len64;
+      }
+      _stage = _masked ? StageMask : StagePayload;
+      break;
+    case StageMask:
+      while (_maskIndex < 4)
+      {
+        if (WS_CLIENT.available() == 0)
+          return false;
+        _mask[_maskIndex++] = WS_CLIENT.read();
+      }
+      _stage = StagePayload;
+      break;
+    case StagePayload:
+      if (_payloadLen > kMaxFrameSize)
+        _dropFrame = true;
+      if (_dropFrame)
+      {
+        while (_payloadRead < _payloadLen)
+        {
+          if (WS_CLIENT.available() == 0)
+            return false;
+          WS_CLIENT.read();
+          _payloadRead++;
+        }
+        if (_shouldClose)
+          WS_CLIENT.stop();
+        _resetFrameState();
+        return false;
+      }
+      if (_payloadLen > 0 && _frameBuffer.length() == 0)
+        _frameBuffer.reserve(_payloadLen);
+      while (_payloadRead < _payloadLen)
+      {
+        if (WS_CLIENT.available() == 0)
+          return false;
+        uint8_t b = WS_CLIENT.read();
+        if (_masked)
+          b ^= _mask[_payloadRead % 4];
+        _frameBuffer += (char)b;
+        _payloadRead++;
+      }
+      if (_opcode == 0x9)
+      {
+        uint8_t pong[2] = {0x8A, 0x00};
+        WS_CLIENT.write(pong, 2);
+        _resetFrameState();
+        return false;
+      }
+      if (_opcode != 0x1)
+      {
+        _resetFrameState();
+        return false;
+      }
+      out = _frameBuffer;
+      _resetFrameState();
+      return true;
+    }
   }
-  if ((hdr1 & 0x0F) != 0x1)
-  {
-#if USE_TLS
-    uint8_t hdr2 = _clientSecure.read();
-    size_t len = hdr2 & 0x7F;
-    for (size_t i = 0; i < len; i++)
-      _clientSecure.read();
-#else
-    uint8_t hdr2 = _clientPlain.read();
-    size_t len = hdr2 & 0x7F;
-    for (size_t i = 0; i < len; i++)
-      _clientPlain.read();
-#endif
-    return false;
-  }
-#if USE_TLS
-  uint8_t hdr2 = _clientSecure.read();
-  bool masked = hdr2 & 0x80;
-  size_t len = hdr2 & 0x7F;
-  if (len == 126)
-  {
-    uint8_t b1 = _clientSecure.read();
-    uint8_t b2 = _clientSecure.read();
-    len = ((size_t)b1 << 8) | b2;
-  }
-  else if (len == 127)
-  {
-    return false;
-  }
-  uint8_t mask[4] = {0, 0, 0, 0};
-  if (masked)
-  {
-    for (int i = 0; i < 4; i++)
-      mask[i] = _clientSecure.read();
-  }
-  out.reserve(len);
-  for (size_t i = 0; i < len; i++)
-  {
-    uint8_t b = _clientSecure.read();
-    if (masked)
-      b ^= mask[i % 4];
-    out += (char)b;
-  }
-#else
-  uint8_t hdr2 = _clientPlain.read();
-  bool masked = hdr2 & 0x80;
-  size_t len = hdr2 & 0x7F;
-  if (len == 126)
-  {
-    uint8_t b1 = _clientPlain.read();
-    uint8_t b2 = _clientPlain.read();
-    len = ((size_t)b1 << 8) | b2;
-  }
-  else if (len == 127)
-  {
-    return false;
-  }
-  uint8_t mask[4] = {0, 0, 0, 0};
-  if (masked)
-  {
-    for (int i = 0; i < 4; i++)
-      mask[i] = _clientPlain.read();
-  }
-  out.reserve(len);
-  for (size_t i = 0; i < len; i++)
-  {
-    uint8_t b = _clientPlain.read();
-    if (masked)
-      b ^= mask[i % 4];
-    out += (char)b;
-  }
-#endif
-  return true;
 }
 
 void WsClient::poll(MessageHandler onMessage)
@@ -327,4 +363,15 @@ bool WsClient::sendText(const char *data, size_t len)
   }
   return true;
 #endif
+}
+
+void WsClient::disconnect()
+{
+#if USE_TLS
+  _clientSecure.stop();
+#else
+  _clientPlain.stop();
+#endif
+  _handshook = false;
+  _resetFrameState();
 }

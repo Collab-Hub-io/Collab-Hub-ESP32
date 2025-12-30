@@ -19,52 +19,9 @@ This ESP32 sketch connects to a `Collab-Hub` server over WebSockets (Socket.IO f
 
 <br />
 
-# Get Started - Two Methods
+# Get Started
 
-There are two methods to get started: PlatformIO or the ArduinoIDE.
-
-## 1. PlatformIO
-
-#### Install PlatformIO (macOS & Windows)
-
-**macOS:**
-
-1. Open Terminal (Applications → Utilities → Terminal)
-2. Check Python 3: `python3 --version`
-3. Install PlatformIO CLI: `python3 -m pip install --user platformio`
-4. (Optional) Add PlatformIO to PATH:
-
-- `echo 'export PATH="$HOME/Library/Python/3.*/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc`
-
-5. Verify: `platformio --version`
-
-**Windows/PC:**
-
-1. Install Python 3 from [python.org](https://www.python.org/downloads/)
-2. Open Command Prompt
-3. Install PlatformIO CLI: `python -m pip install --user platformio`
-4. (Optional) Add PlatformIO to PATH (see Python installer option or [PlatformIO docs](https://docs.platformio.org/en/latest/core/installation.html#add-to-system-path))
-5. Verify: `platformio --version`
-
-**Or, install PlatformIO IDE extension in VS Code:**
-
-1. Open VS Code - (Download VS Code here: https://code.visualstudio.com)
-2. Go to Extensions (Ctrl+Shift+X or Cmd+Shift+X)
-3. Search for "PlatformIO IDE" and click Install
-
-#### Project Setup & Upload
-
-1. Clone this repo and open the folder in VS Code or terminal
-2. Edit `CollabHubESP32/config.h` with your WiFi and hub settings
-3. Connect your ESP32 board via USB. Install drivers if needed (see below)
-4. Build & upload:
-   - CLI: `python3 -m platformio run -t upload --upload-port /dev/cu.SLAB_USBtoUART`
-   - VS Code: Use PlatformIO IDE buttons (Build, Upload, Monitor)
-5. Open Serial Monitor at 115200 baud to view output
-
----
-
-## 2. Arduino IDE
+## Arduino IDE
 
 0. Download this repo to your computer and unzip.
 1. Install ESP32 core: Tools → Board → Boards Manager → search "esp32" by Espressif Systems → Install
@@ -76,7 +33,7 @@ There are two methods to get started: PlatformIO or the ArduinoIDE.
 
 <br />
 
-# Arduino or PlatformIO unable to connect to your ESP32 Board?
+# Arduino unable to connect to your ESP32 Board?
 
 Your computer might have trouble recognizing your board. Double check the following:
 
@@ -91,8 +48,6 @@ Your computer might have trouble recognizing your board. Double check the follow
 ## List Serial Ports (macOS/Linux)
 
 ```bash
-# PlatformIO CLI
-python3 -m platformio device list
 # macOS Terminal
 ls /dev/cu.*
 # Linux Terminal
@@ -122,14 +77,14 @@ The other values do not need to change.
 
 ## Connect
 
-1. After you have customized your `WIFI_SSID` / `WIFI_PASS` in `CollabHubESP32/config.h`, upload the sketch to the board using PlatformIO or the ArduineIDE.
+1. After you have customized your `WIFI_SSID` / `WIFI_PASS` in `CollabHubESP32/config.h`, upload the sketch to the board using ArduineIDE.
 2. The board should restart and try to connect to your WIFI.
 
    - <img src="img/ESP32-WIFI-Connected.png" alt="Successful WIFI Connection Serial Printout within ArduinoIDE" width="400"/>
 
    - ^ Successful WIFI Connection Serial Printout within ArduinoIDE
 
-   - <img src="img/ESP32-Arduino-Boot-NoConnect.png" alt="UNSuccessful WIFI Connection Serial Printout within ArduinoIDE will continue to extend the ellipses......." width="500"/>
+   - <img src="img/ESP32-Arduino-Boot-NoConnect.png" alt="UNSuccessful WIFI Connection Serial Printout within ArduinoIDE will continue to extend the ellipses. And eventually timeout." width="500"/>
 
    - ^ UNSuccessful WIFI Connection Serial Printout within ArduinoIDE will continue to extend the ellipses.......
 
@@ -292,21 +247,12 @@ This ESP32 client supports both unencrypted (`ws://`) and encrypted (`wss://`, T
 ## Links & Resources
 
 - [server.collab-hub.io web page](https://server.collab-hub.io) — test your ESP32 client, send/receive messages in real time
-- [PlatformIO Docs](https://docs.platformio.org/)
 - [ESP32 Arduino Core](https://github.com/espressif/arduino-esp32)
 
 ### USB Drivers (macOS)
 
 - CP210x: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
 - CH34x: https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html
-
-## Build & Upload (CLI)
-
-```bash
-python3 -m pip install --user platformio
-python3 -m platformio --version
-python3 -m platformio device monitor -b 115200
-```
 
 **Common port names:**
 
@@ -357,7 +303,7 @@ Your project is organized for easy configuration and user extension:
   - Use the provided hooks (e.g., `onControlMessage`, `onEventPinPressed`, etc.) to respond to messages and hardware events.
 - `CollabHubESP32/SioClient.h/.cpp`: Socket.IO protocol shim (do not edit unless you are modifying protocol internals).
 - `CollabHubESP32/WsClient.h/.cpp`: Minimal WebSocket client (do not edit unless you are modifying protocol internals).
-- `platformio.ini`: PlatformIO build configuration.
+- `platformio.ini`: PlatformIO build configuration (if you choose to use Platform.io)
 
 **To customize behavior:**
 

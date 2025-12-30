@@ -32,16 +32,27 @@ void setup()
     userScriptSetup();
 
     WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     Serial.print("Connecting WiFi");
-    while (WiFi.status() != WL_CONNECTED)
+    unsigned long wifiStart = millis();
+    const unsigned long wifiTimeoutMs = 15000;
+    while (WiFi.status() != WL_CONNECTED && (millis() - wifiStart) < wifiTimeoutMs)
     {
         delay(500);
         Serial.print(".");
     }
-    Serial.println("");
-    Serial.print("WiFi OK: ");
-    Serial.println(WiFi.localIP());
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        Serial.println("");
+        Serial.print("WiFi OK: ");
+        Serial.println(WiFi.localIP());
+    }
+    else
+    {
+        Serial.println("");
+        Serial.println("WiFi connect timeout; will retry in loop.");
+    }
 
     sio.onOpen([]()
                {
@@ -78,10 +89,30 @@ void loop()
 {
     static unsigned long lastHeartbeat = 0;
     static unsigned long lastReconnectAttempt = 0;
+    static unsigned long reconnectIntervalMs = 5000;
+    static unsigned long lastWifiAttempt = 0;
+    static unsigned long wifiRetryIntervalMs = 5000;
     static bool shouldReconnect = false;
     sio.loop();
     unsigned long now = millis();
     userScriptLoop();
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        if (now - lastWifiAttempt > wifiRetryIntervalMs)
+        {
+            Serial.println("[ESP32] WiFi disconnected, attempting reconnect...");
+            WiFi.disconnect();
+            WiFi.begin(WIFI_SSID, WIFI_PASS);
+            lastWifiAttempt = now;
+            if (wifiRetryIntervalMs < 60000UL)
+            {
+                wifiRetryIntervalMs = min(wifiRetryIntervalMs * 2, 60000UL);
+            }
+        }
+        delay(100);
+        return;
+    }
+    wifiRetryIntervalMs = 5000;
     if (!sio.connected())
     {
         if (!shouldReconnect)
@@ -90,11 +121,15 @@ void loop()
             shouldReconnect = true;
             lastReconnectAttempt = now;
         }
-        if (shouldReconnect && (now - lastReconnectAttempt > 5000))
+        if (shouldReconnect && (now - lastReconnectAttempt > reconnectIntervalMs))
         {
             Serial.println("[ESP32] Attempting reconnect...");
             sio.begin(HUB_HOST, HUB_PORT, HUB_NAMESPACE, USE_TLS);
             shouldReconnect = false;
+            if (reconnectIntervalMs < 60000UL)
+            {
+                reconnectIntervalMs = min(reconnectIntervalMs * 2, 60000UL);
+            }
         }
         delay(100);
         return;
@@ -102,6 +137,7 @@ void loop()
     else
     {
         shouldReconnect = false;
+        reconnectIntervalMs = 5000;
     }
     if (now - lastHeartbeat > 2000)
     {

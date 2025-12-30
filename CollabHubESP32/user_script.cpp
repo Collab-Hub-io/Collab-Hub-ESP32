@@ -62,6 +62,11 @@ static bool lastEventPinState = HIGH;
 static bool lastCtrl0State = HIGH;
 static bool lastCtrl1State = HIGH;
 static bool lastCtrl2State = HIGH;
+static unsigned long lastEventActionMs = 0;
+static unsigned long lastCtrl0ActionMs = 0;
+static unsigned long lastCtrl1ActionMs = 0;
+static unsigned long lastCtrl2ActionMs = 0;
+static const unsigned long debounceMs = 30;
 
 // ================= User Defined Methods (Add and Edit)=================
 // (Add any additional user-defined methods here)
@@ -115,28 +120,33 @@ void userScriptSetup()
 void userScriptLoop()
 {
     // Check event pin state for falling edge
+    unsigned long now = millis();
     bool eventPinState = digitalRead(EVENT_PIN);
     bool ctrl0State = digitalRead(CTRL_PIN_0);
     bool ctrl1State = digitalRead(CTRL_PIN_1);
     bool ctrl2State = digitalRead(CTRL_PIN_2);
-    // control buttons (active low)
-    if (ctrl0State == LOW)
+    // control buttons (active low, edge-triggered)
+    if (lastCtrl0State == HIGH && ctrl0State == LOW && (now - lastCtrl0ActionMs) > debounceMs)
     {
         decrementCounter();
+        lastCtrl0ActionMs = now;
     }
-    if (ctrl1State == LOW)
+    if (lastCtrl1State == HIGH && ctrl1State == LOW && (now - lastCtrl1ActionMs) > debounceMs)
     {
         incrementCounter();
+        lastCtrl1ActionMs = now;
     }
-    if (lastCtrl2State == HIGH && ctrl2State == LOW)
+    if (lastCtrl2State == HIGH && ctrl2State == LOW && (now - lastCtrl2ActionMs) > debounceMs)
     {
         // emit chat message
         emitChat("ESP32 says hello!");
+        lastCtrl2ActionMs = now;
     }
     // event pin falling edge detection
-    if (lastEventPinState == HIGH && eventPinState == LOW)
+    if (lastEventPinState == HIGH && eventPinState == LOW && (now - lastEventActionMs) > debounceMs)
     {
         onEventPinPressed();
+        lastEventActionMs = now;
     }
     // clean up states
     lastEventPinState = eventPinState;

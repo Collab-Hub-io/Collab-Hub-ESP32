@@ -15,6 +15,7 @@ SioClient::SioClient() {}
 
 void SioClient::begin(const char *host, uint16_t port, const char *nsp, bool useSSL, const char *username)
 {
+  (void)useSSL; // USE_TLS is compile-time.
   _nsp = (nsp && *nsp) ? String(nsp) : String("/");
   _username = (username && *username) ? String(username) : String("");
   String path = "/socket.io/?EIO=4&transport=websocket";
@@ -52,6 +53,19 @@ void SioClient::loop()
     lastConnected = currentConnected;
   }
   // ...existing code...
+
+  if (_pingIntervalMs > 0 && _lastPingMs > 0)
+  {
+    uint32_t elapsed = now - _lastPingMs;
+    if (elapsed > (_pingIntervalMs * 2))
+    {
+      // Serial.println("[SioClient] Ping timeout, disconnecting");
+      _ws.disconnect();
+      _open = false;
+      _lastPingMs = 0;
+      return;
+    }
+  }
 
   // Do NOT send client-initiated pings. Only respond to server pings.
 }
@@ -103,6 +117,7 @@ void SioClient::_handleText(const char *payload, size_t length)
       // Serial.print("pingIntervalMs=");
       // Serial.println(_pingIntervalMs);
     }
+    _lastPingMs = millis();
     _sendNamespaceOpen();
     return;
   }
