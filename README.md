@@ -1,6 +1,8 @@
-# Collab-Hub ESP32 Client - 0.1.1
+# Collab-Hub ESP32 Client - 0.1.1 (Beta)
 
-This ESP32 sketch connects to a `Collab-Hub` server over WebSockets (Socket.IO framing), generates with a username starting `ESP-XYZ`, joins the `iot` room, and it able to send and receive Collab-Hub Control, Event, and Chat messages.
+This sketch allows ESP32 devices to the Collab-Hub.io ecosystem. Devices connect to a `Collab-Hub` server over WebSockets (Socket.IO framing), generate a username `ESP-XYZ`, join the `iot` room, and are able to send and receive Collab-Hub `Control`, `Event`, and `Chat` messages.
+
+Contact Nick Hwang (nickthwang at gmail) with any questions.
 
 ## Features
 
@@ -15,55 +17,73 @@ This ESP32 sketch connects to a `Collab-Hub` server over WebSockets (Socket.IO f
 - `CollabHubESP32/config.h`: **Edit for WiFi, server, and room settings**
 - `CollabHubESP32/user_script.cpp` & `.h`: **Edit for your custom logic, handlers, and hardware code**
 - `CollabHubESP32/SioClient.*`, `WsClient.*`: Protocol internals (do not edit)
-- `platformio.ini`: PlatformIO build config
+- `platformio.ini`: PlatformIO build config (Optional)
 
-<br />
+# Table of Contents:
+
+- [Get Started](#get-started)
+  - [Arduino IDE](#arduino-ide)
+  - [Selecting your board and port](#selecting-your-board-and-port-in-arduino-ide)
+  - [Configuring the WIFI and Server Location](#configuring-the-wifi-and-server-location-hub_host)
+- [Connect to Collab-Hub Server](#connect)
+  - [Sending and Receiving Data through Collab-Hub](#sending-and-receiving-data-through-collab-hub)
+- [Customizing your own logic](#customizing-your-own-logic)
+- [Troubleshooting](#troubleshooting)
+- [File Structure & Customization](#file-structure--customization)
 
 # Get Started
 
 ## Arduino IDE
 
 0. Download this repo to your computer and unzip.
-1. Install ESP32 core: Tools → Board → Boards Manager → search "esp32" by Espressif Systems → Install
-2. Open the sketch folder: `CollabHubESP32`
-3. Install ArduinoJson library (v6) via Tools → Manage Libraries…
-4. Edit `config.h` for WiFi and hub settings (in the `CollabHubESP32` folder) - Details below
-5. Select your board and correct `/dev/cu.*` port - Troubleshooting tips below
-6. Upload and open Serial Monitor at 115200 baud
+1. Download and install [Arduino IDE](https://www.arduino.cc/en/software/)
+1. Install ESP32 core: Tools → Board → Boards Manager (Shift+Command+B) → search "esp32" by Espressif Systems → Install
+   <img src="img/Tools-Board-BoardManager.png" width="600">s
 
-<br />
+   <img src="img/Search-ESP32.png" width="300">
 
-# Arduino unable to connect to your ESP32 Board?
+1. Install ArduinoJson library: Tools → Manage Libraries (Shift+Command+I) → search "arduinojson"
 
-Your computer might have trouble recognizing your board. Double check the following:
+   <img src="img/Arduino-JSON-library.png" width="300">
 
-1. _Not all cables are created equal_. Make sure the ESP32 board is connected to your computer through a data cable, as some cables are just charging cables and may not have their data nodes connected.
-2. If you're on a Mac, you might need to install drivers:
+1. Open the sketch folder: `CollabHubESP32`
+1. Edit `config.h` for WiFi and hub settings (in the `CollabHubESP32` folder) - [Details here](#configuring-the-wifi-and-server-location-hub_host)
+1. [Select your board](#selecting-your-board-and-port-in-arduino-ide) and the correct `/dev/cu.*` port - [Troubleshooting](#troubleshooting) tips below
+1. Upload the Sketch (the triagular play button) and open Serial Monitor at 115200 baud
 
-   - CP210x: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
-   - CH34x: https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html
+## Selecting your board and port in Arduino IDE
 
-   - If you are installing drivers, unplug your board before install. Make sure you Allow these drivers in MacOS. You might see an alert window pop-up. In other cases you will have to go to either Security & Privacy settings or Login Items & Extensions to press Allow from the drivers. Reboot.
+1. At the top left corner of the ArduinoIDE, click the button that says 'Select Board'. It will have the USB symbol within the button box. It might already have the name of a board in the box, like the image below.
 
-## List Serial Ports (macOS/Linux)
+   <img src="img/Select-Board.png" width="300">
 
-```bash
-# macOS Terminal
-ls /dev/cu.*
-# Linux Terminal
-ls /dev/ttyUSB*
-ls /dev/ttyACM*
-```
+2. If you don't already see your board connected the correct port, Select 'Connect other board and port...'
+   <img src="img/Select-Other-Board.png" width="500">
 
-**Typical ESP32 ports:**
+3. Search ESP in the search bar and select your board. This tutorial is using `ESP32 Dev Module`.
+   <img src="img/Search-ESP32-Dev.png" width="500">
 
-- `/dev/cu.SLAB_USBtoUART` (CP210x)
-- `/dev/cu.wchusbserial*` (CH34x)
-- `/dev/ttyUSB0` or `/dev/ttyACM0` (Linux)
+4. Select the port that your board is on. (Make sure your board is plugged into your machine.) You should see a list of available ports with one that matches the list below:
+
+   **Typical ESP32 ports:**
+
+   - `/dev/cu.SLAB_USBtoUART` (CP210x)
+   - `/dev/cu.wchusbserial*` (CH34x)
+   - `/dev/ttyUSB0` or `/dev/ttyACM0` (Linux)
+
+   \*\*If you are machine is not recognizing your board, your list might look like the image below:
+   <img src="img/Ports-Missing.png" width="500">
+
+   \*\*If you are machine is recognizing your board, your list might look like the image below:
+   <img src="img/ESP32-port-available.png" width="500">
+
+5. If you do not see any available ports, [refer to the section below](#arduino-unable-to-connect-to-your-esp32-board).
+6. Select `OK`.
+7. You should be able to upload your sketch (the triagular play button) and open Serial Monitor at 115200 baud.
 
 ---
 
-## Configuring the WIFI and server location
+## Configuring the WIFI and Server Location (Hub_Host)
 
 Edit `CollabHubESP32/config.h`:
 
@@ -73,9 +93,9 @@ Edit `CollabHubESP32/config.h`:
 - `IOT_ROOM` (default `iot`)
 
 The values you want to change are the `WIFI_SSID` and `WIFI_PASS` in `config.h`.
-The other values do not need to change.
+The other values do not need to change. Namespaces are an area development in the iteration of Collab-Hub.
 
-## Connect
+# Connect
 
 1. After you have customized your `WIFI_SSID` / `WIFI_PASS` in `CollabHubESP32/config.h`, upload the sketch to the board using ArduineIDE.
 2. The board should restart and try to connect to your WIFI.
@@ -218,6 +238,34 @@ void emitChat(const char *text)
 
 # Troubleshooting
 
+Your computer might have trouble recognizing your board. Double check the following:
+
+1. _Not all cables are created equal_. Make sure the ESP32 board is connected to your computer through a data cable, as some cables are just charging cables and may not have their data nodes connected.
+2. If you're on a Mac, you might need to install drivers:
+
+   - CP210x: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
+   - CH34x: https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html
+
+   - If you are installing drivers, unplug your board before install. Make sure you Allow these drivers in MacOS. You might see an alert window pop-up. In other cases you will have to go to either Security & Privacy settings or Login Items & Extensions to press Allow from the drivers. Reboot.
+
+3. If upload stalls, hold BOOT, tap EN (RST), release BOOT during connection.
+
+## List Serial Ports (macOS/Linux)
+
+```bash
+# macOS Terminal
+ls /dev/cu.*
+# Linux Terminal
+ls /dev/ttyUSB*
+ls /dev/ttyACM*
+```
+
+**Typical ESP32 ports:**
+
+- `/dev/cu.SLAB_USBtoUART` (CP210x)
+- `/dev/cu.wchusbserial*` (CH34x)
+- `/dev/ttyUSB0` or `/dev/ttyACM0` (Linux)
+
 - No serial ports: Install USB driver, allow extension, reboot, replug board
 - Upload stalls: Hold BOOT, tap EN (RST), release BOOT during connection
 - Wrong port: Set `--upload-port` or select correct port in IDE
@@ -244,24 +292,6 @@ This ESP32 client supports both unencrypted (`ws://`) and encrypted (`wss://`, T
 
 ---
 
-## Links & Resources
-
-- [server.collab-hub.io web page](https://server.collab-hub.io) — test your ESP32 client, send/receive messages in real time
-- [ESP32 Arduino Core](https://github.com/espressif/arduino-esp32)
-
-### USB Drivers (macOS)
-
-- CP210x: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
-- CH34x: https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html
-
-**Common port names:**
-
-- `/dev/cu.usbserial-...`
-- `/dev/cu.SLAB_USBtoUART`
-- `/dev/cu.wchusbserial...`
-
-If upload stalls, hold BOOT, tap EN (RST), release BOOT during connection.
-
 **VS Code PlatformIO:**
 
 1. Install "PlatformIO IDE" extension.
@@ -275,25 +305,9 @@ On serial monitor you should see:
 - Client listens to `control`, `event`, and `chat` frames.
 - Pressing a button connected to the configured GPIO pin (default: GPIO 0) sends an event
 
-## Connection & Transport
+# File Structure & Customization
 
-This ESP32 client supports both unencrypted (`ws://`) and encrypted (`wss://`, TLS) WebSocket connections to Collab-Hub servers.
-
-- **TLS/SSL (wss://) is fully supported** using `WiFiClientSecure`. By default, the config uses `wss://server.collab-hub.io` (port 443, `USE_TLS true`).
-- For local or non-TLS servers, set `USE_TLS false` and use the appropriate `HUB_HOST` and `HUB_PORT` (e.g., `ws://192.168.1.100:3000`).
-- No CA certificate is required for the public server; the client uses `setInsecure()` for convenience. For production security, you may add CA validation.
-- All connection settings are in `config.h`:
-  - `HUB_HOST` (server address)
-  - `HUB_PORT` (443 for wss, 3000 for ws)
-  - `USE_TLS` (true for wss, false for ws)
-
-**Default:** The client connects to `wss://server.collab-hub.io` out of the box.
-
-If you encounter TLS handshake issues, ensure your ESP32 board has sufficient memory and is running the latest ESP32 Arduino core. For most users, secure connections should work reliably.
-
-## File Structure & Customization
-
-Your project is organized for easy configuration and user extension:
+This project is organized for easy configuration and user extension:
 
 - `CollabHubESP32/CollabHubESP32.ino`: **Core logic**. Do not modify unless you are changing the package itself. Handles connection, routing, and setup.
 - `CollabHubESP32/config.h`: **Edit this file to set your WiFi, server, and room settings.**
@@ -309,16 +323,6 @@ Your project is organized for easy configuration and user extension:
 
 - Only edit `config.h` (for network/server settings) and `user_script.cpp`/`user_script.h` (for your application logic).
 - You do NOT need to change `CollabHubESP32.ino`, `SioClient`, or `WsClient` for normal use.
-
-## Arduino IDE Setup
-
-- Install ESP32 core: Tools → Board → Boards Manager → search "esp32" by Espressif Systems → Install.
-- Open the sketch folder: `/CollabHubESP32` (file name matches folder).
-- Install dependencies via Tools → Manage Libraries…:
-  - ArduinoJson by Benoit Blanchon (v6).
-- Select your board (ESP32 Dev Module) and the correct `/dev/cu.*` port.
-- Edit `/CollabHubESP32/config.h` with your WiFi and hub settings.
-- Upload, then open Serial Monitor at 115200.
 
 Notes:
 
