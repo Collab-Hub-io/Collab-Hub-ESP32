@@ -63,9 +63,11 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
    <img src="img/Select-Board.png" width="300">
 
 2. If you don't already see your board connected the correct port, Select 'Connect other board and port...'
+
    <img src="img/Select-Other-Board.png" width="500">
 
 3. Search ESP in the search bar and select your board. This tutorial is using `ESP32 Dev Module`.
+
    <img src="img/Search-ESP32-Dev.png" width="500">
 
 4. Select the port that your board is on. (Make sure your board is plugged into your machine.) You should see a list of available ports with one that matches the list below:
@@ -77,9 +79,11 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
    - `/dev/ttyUSB0` or `/dev/ttyACM0` (Linux)
 
    \*\*If you are machine is not recognizing your board, your list might look like the image below:
+
    <img src="img/Ports-Missing.png" width="500">
 
    \*\*If you are machine is recognizing your board, your list might look like the image below:
+
    <img src="img/ESP32-port-available.png" width="500">
 
 5. If you do not see any available ports, [refer to the section below](#arduino-unable-to-connect-to-your-esp32-board).
@@ -130,6 +134,7 @@ The other values do not need to change. Namespaces are an area development in th
 ### Receiving Messages to the ESP32
 
 1. If the ESP32 is connected to the ArduinoIDE, you can see the serial readout of incoming messages.
+
    ![Arduino Serial Monitor](img/Arduino-Serial-Monitor.png)
 
 2. Open a browser window of the Collab-Hub Webclient (https://server.collab-hub.io) and click the 'event webEvent3' or slide the 'control webSlider3' UI elements. These two messages are 'PUSH ALL' type and targets, which means these messages go all users in the namespace, and the ESP32 should receive them automatically. You can type a chat message as well from the Webclient-- set the target 'all' (no quotes) or the username of your ESP32.
@@ -145,16 +150,23 @@ The other values do not need to change. Namespaces are an area development in th
 
 1. In the existing, you can send all three types of messages being using the GPIO.
 2. We'll cover triggering those messages and then dive into the code structure and how you might edit the code for your purposes.
+
    <img src="img/ESP32.jpeg" alt="ESP32 with GPIO pins visible" width=600>
+
 3. Currently, the user_script is set to trigger messages when GPIO pins are connected to ground.
    1. GPIO 0 - send an event `espEvent`
    2. GPIO 4 - increment an integer, send that integer as a control message with header `espControl`
    3. GPIO 16 - increment the integer, send that integer as a control message with header `espControl`
    4. GPIO 17 - send a chat message
 4. You should be able to connect the individiual pins to Ground and should see a Serial printout in the ArduinoIDE
+
    ![alt text](img/ESP32-Serial-Message-Send.png)
+
 5. You should be able to see the event, control values, and chat appear at the top to the Webclient.
+
    ![Webclient-Messages-Received](img/Webclient-Messages-Received.png)
+
+   Youtube: Intro Video: (https://youtube.com/shorts/QIJJktYq_Q0)
 
 ```
 # Wiring:
