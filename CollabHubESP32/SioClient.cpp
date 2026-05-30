@@ -13,7 +13,7 @@ bool SioClient::connected()
 
 SioClient::SioClient() {}
 
-void SioClient::begin(const char *host, uint16_t port, const char *nsp, bool useSSL, const char *username)
+void SioClient::begin(const char *host, uint16_t port, const char *nsp, bool useSSL, const char *username, const char *token)
 {
   (void)useSSL; // USE_TLS is compile-time.
   _nsp = (nsp && *nsp) ? String(nsp) : String("/");
@@ -23,6 +23,11 @@ void SioClient::begin(const char *host, uint16_t port, const char *nsp, bool use
   {
     path += "&username=";
     path += _username;
+  }
+  if (token && *token)
+  {
+    path += "&token=";
+    path += token;
   }
   // Serial.print("WS connecting to ");
   // Serial.print(host);

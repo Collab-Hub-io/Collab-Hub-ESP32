@@ -1,13 +1,13 @@
 # Collab-Hub ESP32 Client - 0.1.1 (Beta)
 
-This sketch allows ESP32 devices connect to the Collab-Hub.io ecosystem. Devices connect to a `Collab-Hub` server over WebSockets (Socket.IO framing), generate a username `ESP-XYZ`, join the `iot` room, and are able to send and receive Collab-Hub `Control`, `Event`, and `Chat` messages.
+This sketch allows ESP32 devices connect to the Collab-Hub.io ecosystem. Devices connect to a `Collab-Hub` server over WebSockets (Socket.IO framing), join the `iot` room, and send/receive Collab-Hub `Control`, `Event`, and `Chat` messages.
 
 Contact Nick Hwang (nickthwang at gmail) with any questions.
 
 ## Features
 
 - Connects to Collab-Hub via ws:// or wss:// (TLS)
-- Joins a room and identifies as ESP-XYZ
+- Joins a room and identifies with a fixed or auto-generated ESP32 username
 - Sends/receives control, event, and chat messages
 - Modular: user logic in `user_script.cpp`, config in `config.h`
 
@@ -73,7 +73,6 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 4. Select the port that your board is on. (Make sure your board is plugged into your machine.) You should see a list of available ports with one that matches the list below:
 
    **Typical ESP32 ports:**
-
    - `/dev/cu.SLAB_USBtoUART` (CP210x)
    - `/dev/cu.wchusbserial*` (CH34x)
    - `/dev/ttyUSB0` or `/dev/ttyACM0` (Linux)
@@ -94,13 +93,58 @@ Contact Nick Hwang (nickthwang at gmail) with any questions.
 
 Edit `CollabHubESP32/config.h`:
 
-- `WIFI_SSID` / `WIFI_PASS`
-- `HUB_HOST` / `HUB_PORT` (use your hub IP; non-TLS `ws://`)
-- `HUB_NAMESPACE` (typically `/hub`)
-- `IOT_ROOM` (default `iot`)
+### WiFi and Credentials
 
-The values you want to change are the `WIFI_SSID` and `WIFI_PASS` in `config.h`.
-The other values do not need to change. Namespaces are an area development in the iteration of Collab-Hub.
+- `WIFI_SSID` / `WIFI_PASS`: Your WiFi SSID and password
+
+### Device Identity
+
+- `HUB_DEVICE_USERNAME`: **Recommended** — Set a fixed, stable username for your ESP32 device (e.g., `esp32_stage_left`, `esp32_sensor_01`). If left blank, a unique name is auto-generated from the device MAC address.
+
+### Server Connection
+
+**For Local Network (Local Collab-Hub Server or RPi):**
+
+```cpp
+#define HUB_HOST "192.168.1.100"      // IP of your local server
+#define HUB_PORT 3000                  // Typical local port
+#define USE_TLS false                  // No TLS needed on local network
+```
+
+**For Remote Server (Cloud-Hosted Collab-Hub):**
+
+```cpp
+#define HUB_HOST "server.collab-hub.io"  // Remote hostname/IP
+#define HUB_PORT 443                        // HTTPS/WSS port
+#define USE_TLS true                        // Enable TLS for secure remote connection
+```
+
+### Other Settings
+
+- `HUB_NAMESPACE`: Typically `/hub` (the Socket.IO namespace)
+- `IOT_ROOM`: Default `iot` (the room to join on the server)
+- `HUB_AUTH_USERNAME` / `HUB_AUTH_PASSWORD`: **Leave blank for now** — Auth support coming in next build. For current build, leave both empty.
+
+### Username Configuration Guide
+
+**Best Practice:** Set `HUB_DEVICE_USERNAME` to a descriptive name in `config.h`:
+
+```cpp
+#define HUB_DEVICE_USERNAME "esp32_stage_left"
+```
+
+This ensures your ESP32 always connects with a human-readable, stable identity.
+
+**Username Rules:**
+
+- Use only lowercase letters `a–z`, numbers `0–9`, and underscores `_`
+- Maximum 32 characters
+- Avoid leading or trailing underscores
+- Recommended style: `esp32_<location>_<number>` (e.g., `esp32_workshop_01`)
+
+**If `HUB_DEVICE_USERNAME` is blank**, the client auto-generates a unique name in the format `esp32_XXXXXX` (where `XXXXXX` is derived from your device's MAC address).
+
+**Important:** For this build, `HUB_AUTH_USERNAME` and `HUB_AUTH_PASSWORD` should remain blank. Guest authentication will connect your device with the configured username above.
 
 ---
 
@@ -108,7 +152,6 @@ The other values do not need to change. Namespaces are an area development in th
 
 1. After you have customized your `WIFI_SSID` / `WIFI_PASS` in `CollabHubESP32/config.h`, upload the sketch to the board using ArduineIDE.
 2. The board should restart and try to connect to your WIFI.
-
    - <img src="img/ESP32-WIFI-Connected.png" alt="Successful WIFI Connection Serial Printout within ArduinoIDE" width="400"/>
 
    - ^ Successful WIFI Connection Serial Printout within ArduinoIDE
@@ -259,7 +302,6 @@ Your computer might have trouble recognizing your board. Double check the follow
 
 1. _Not all cables are created equal_. Make sure the ESP32 board is connected to your computer through a data cable, as some cables are just charging cables and may not have their data nodes connected.
 2. If you're on a Mac, you might need to install drivers:
-
    - CP210x: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
    - CH34x: https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html
 

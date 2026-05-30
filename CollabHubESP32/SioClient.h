@@ -13,7 +13,7 @@ public:
   using OpenHandler = std::function<void()>;
 
   SioClient();
-  void begin(const char *host, uint16_t port, const char *nsp, bool useSSL, const char *username = nullptr);
+  void begin(const char *host, uint16_t port, const char *nsp, bool useSSL, const char *username = nullptr, const char *token = nullptr);
   void loop();
   void emit(const char *event, const char *payloadJson);
   void on(const char *event, TextHandler handler);
